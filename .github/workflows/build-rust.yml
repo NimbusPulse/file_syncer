@@ -1,0 +1,40 @@
+name: Build Rust
+
+on:
+    push:
+        branches: ["main"]
+    pull_request:
+
+env:
+    CARGO_TERM_COLOR: always
+
+jobs:
+    build-file-syncer:
+        runs-on: buildjet-2vcpu-ubuntu-2204
+
+        steps:
+            - uses: actions/checkout@v6
+
+            - run: rustup toolchain install stable --profile minimal
+
+            - name: Get rustc version
+              run: echo "RUSTC_VERSION=$(rustc --version | cut -d' ' -f2)" >> $GITHUB_ENV
+
+            - uses: buildjet/cache@v3
+              with:
+                  path: |
+                      ~/.cargo/bin/
+                      ~/.cargo/registry/index/
+                      ~/.cargo/registry/cache/
+                      ~/.cargo/git/db/
+                      target/
+                  key: file-syncer-${{ runner.os }}-${{ runner.arch }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUSTC_VERSION }}
+
+            - name: Build
+              run: cargo build --release
+
+            - uses: actions/upload-artifact@v4
+              with:
+                  name: file_syncer
+                  path: target/release/file_syncer
+                  retention-days: 3
